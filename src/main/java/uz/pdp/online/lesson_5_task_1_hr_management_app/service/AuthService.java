@@ -65,23 +65,25 @@ public class AuthService implements UserDetailsService {
         User user = (User) authentication.getPrincipal();
 
         for (GrantedAuthority authority : user.getAuthorities()) {
-            if (authority.getAuthority().equals(RoleName.ROLE_DIRECTOR.name()) || authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name())) {
-                User addingUser = new User();
-                addingUser.setFullName(registerDto.getFullName());
-                addingUser.setEmail(registerDto.getEmail());
+            if (authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name()) && registerDto.getRoleId() == 1 || registerDto.getRoleId() == 2)
+                return new ApiResponse("Manager ushbu tizimga direktor yoki manager qo'sha olmaydi",false);
+                if (authority.getAuthority().equals(RoleName.ROLE_DIRECTOR.name()) || authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name())) {
+                    User addingUser = new User();
+                    addingUser.setFullName(registerDto.getFullName());
+                    addingUser.setEmail(registerDto.getEmail());
 
-                addingUser.setRoles(Collections.singleton(roleRepos.getById(registerDto.getRoleId())));
-                addingUser.setPassword(passwordEncoder.encode("1234"));
-                addingUser.setEmailCode(UUID.randomUUID().toString());
-                userRepos.save(addingUser);
+                    addingUser.setRoles(Collections.singleton(roleRepos.getById(registerDto.getRoleId())));
+                    addingUser.setPassword(passwordEncoder.encode("1234"));
+                    addingUser.setEmailCode(UUID.randomUUID().toString());
+                    userRepos.save(addingUser);
 
-                sendEmail(registerDto.getEmail(), user.getEmailCode());
-                return new ApiResponse("Foydalanuvchi tizimdan ro'yxatdan o'tdi, e-pochtasiga tasdiqlash uchun xabar yuborildi", true);
-            } else {
-                return new ApiResponse("Xodim rolidagi foydalanuvchi tizimga hech kimni qo'sha olmaydi", false);
-            }
+                    sendEmail(registerDto.getEmail(), user.getEmailCode());
+                    return new ApiResponse("Foydalanuvchi tizimdan ro'yxatdan o'tdi, e-pochtasiga tasdiqlash uchun xabar yuborildi", true);
+                } else {
+                    return new ApiResponse("Xodim rolidagi foydalanuvchi tizimga hech kimni qo'sha olmaydi", false);
+                }
         }
-        return new ApiResponse("Xatolik!",false);
+        return new ApiResponse("Xatolik!", false);
     }
 
     public boolean sendEmail(String sendingEmail, String emailCode) {

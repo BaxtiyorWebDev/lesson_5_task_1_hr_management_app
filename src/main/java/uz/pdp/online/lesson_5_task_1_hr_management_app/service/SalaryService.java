@@ -34,6 +34,8 @@ public class SalaryService {
         Optional<User> optionalUser = userRepos.findById(salaryDto.getUserId());
         if (!optionalUser.isPresent())
             return new ApiResponse("Bunday foydalanuvchi topilmadi", false);
+        User user = optionalUser.get();
+
 
         boolean existsByUserIdAndMonthIdAndYear = salaryRepos.existsByUserIdAndMonthIdAndYear(salaryDto.getUserId(), salaryDto.getMonthId(), salaryDto.getYear());
         if (existsByUserIdAndMonthIdAndYear)
@@ -43,16 +45,34 @@ public class SalaryService {
         if (!optionalMonth.isPresent())
             return new ApiResponse("Maosh qaysi oy uchun kiritilayotgani aniqlanmadi", false);
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User authenticationUser = (User) authentication.getPrincipal();
+        for (GrantedAuthority authority : authenticationUser.getAuthorities()) {
+            if (authority.getAuthority().equals(RoleName.ROLE_EMPLOYEE.name()))
+                return new ApiResponse("Xodim o'ziga maosh yoza olmaydi", false);
+            if (authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name()) && authenticationUser.getUsername().equals(user.getUsername()))
+                return new ApiResponse("Manager o'ziga o'zi maosh yoza olmaydi", false);
+        }
+
+
         Salary salary = new Salary();
         salary.setUser(optionalUser.get());
         salary.setAmount(salaryDto.getAmount());
         salary.setMonth(optionalMonth.get());
         salary.setYear(salaryDto.getYear());
+        salary.setCreatedBy(authenticationUser.getId());
+        salary.setUpdatedBy(authenticationUser.getId());
         salaryRepos.save(salary);
         return new ApiResponse(optionalUser.get().getEmail() + " ga " + salary.getAmount() + " miqdorda oylik maosh ajratildi", true);
     }
 
     public ApiResponse editSalary(UUID id, SalaryDto salaryDto) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User authenticationUser = (User) authentication.getPrincipal();
+        for (GrantedAuthority authority : authenticationUser.getAuthorities()) {
+            if (!authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name()) || !authority.getAuthority().equals(RoleName.ROLE_DIRECTOR.name()))
+                return new ApiResponse("Maoshlar ro'yxatini faqat direktor va meneger ko'rish imkoniyatiga ega", false);
+        }
         Optional<Salary> optionalSalary = salaryRepos.findById(id);
         if (!optionalSalary.isPresent())
             return new ApiResponse("Ushbu id lik maosh topilmadi", false);
@@ -80,11 +100,23 @@ public class SalaryService {
 
 
     public List<Salary> getAllSalary() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User authenticationUser = (User) authentication.getPrincipal();
+        for (GrantedAuthority authority : authenticationUser.getAuthorities()) {
+            if (!authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name()) || !authority.getAuthority().equals(RoleName.ROLE_DIRECTOR.name()))
+                return null;
+        }
         List<Salary> salaryList = salaryRepos.findAll();
         return salaryList;
     }
 
     public Salary getSalaryById(UUID id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User authenticationUser = (User) authentication.getPrincipal();
+        for (GrantedAuthority authority : authenticationUser.getAuthorities()) {
+            if (!authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name()) || !authority.getAuthority().equals(RoleName.ROLE_DIRECTOR.name()))
+                return null;
+        }
         Optional<Salary> optionalSalary = salaryRepos.findById(id);
         return optionalSalary.orElse(null);
     }
@@ -107,6 +139,12 @@ public class SalaryService {
     }
 
     public List<Salary> getSalaryBetweenMonth(Integer start, Integer end) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User authenticationUser = (User) authentication.getPrincipal();
+        for (GrantedAuthority authority : authenticationUser.getAuthorities()) {
+            if (!authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name()) || !authority.getAuthority().equals(RoleName.ROLE_DIRECTOR.name()))
+                return null;
+        }
         Optional<Month> optionalMonth1 = monthRepos.findById(start);
         Optional<Month> optionalMonth2 = monthRepos.findById(end);
         if (!optionalMonth1.isPresent() && !optionalMonth2.isPresent())
@@ -118,12 +156,17 @@ public class SalaryService {
 
 
     public ApiResponse deleteSalaryById(UUID id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User authenticationUser = (User) authentication.getPrincipal();
+        for (GrantedAuthority authority : authenticationUser.getAuthorities()) {
+            if (!authority.getAuthority().equals(RoleName.ROLE_HR_MANAGER.name()) || !authority.getAuthority().equals(RoleName.ROLE_DIRECTOR.name()))
+                return new ApiResponse("Maoshlar ro'yxatini faqat direktor va meneger ko'rish imkoniyatiga ega", false);
+        }
         Optional<Salary> optionalSalary = salaryRepos.findById(id);
         if (!optionalSalary.isPresent())
-            return new ApiResponse("Ushbu id lik maosh topilmadi",false);
+            return new ApiResponse("Ushbu id lik maosh topilmadi", false);
         salaryRepos.delete(optionalSalary.get());
-        return new ApiResponse("maosh o'chirildi",true);
+        return new ApiResponse("maosh o'chirildi", true);
     }
-
 
 }
